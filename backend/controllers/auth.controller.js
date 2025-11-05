@@ -54,9 +54,37 @@ const signup = async (req, res) =>{
     }
     catch(err){
         res.status(500).json({message: "Internal Server Error"});
-        console.log("error while signing up:", err);
+        console.log("Error while signing up:", err);
+    }
+}
+
+const getuser = async(req, res) => {
+    try{
+        const user = await User.findById(req.user._id).select("-password");
+        res.status(200).json(user);
+    }
+    catch{
+        console.log("Error while getting user details");
+        res.status(500).json({message: "Internal Server Error"});
     }
 }
 
 
-export {signup};
+const logout = async(req, res)=>{
+    try{
+        res.clearCookie("jwt",{
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV !== "development",
+        });
+        
+        res.status(200).json({message: "Logged out successfully!"});
+    }
+    catch(err){
+        res.status(500).json({message: "Internal Server Error"});
+        console.log("Error while logging out", err);
+    }
+}
+
+
+export {signup, logout, getuser};
