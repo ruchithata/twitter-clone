@@ -2,10 +2,12 @@ import express from 'express';
 import dotenv from 'dotenv';
 import connectDB from './database/db.js';
 import router from './routes/auth.routes.js';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 app.use(express.json());
 // app.use(express.urlencoded({extended: true}));  // to parse from data urlencoded.
+app.use(cookieParser());
 
 dotenv.config();
 const PORT = process.env.PORT || 3000;
