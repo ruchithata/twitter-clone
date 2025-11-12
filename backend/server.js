@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import connectDB from './database/db.js';
 import router from './routes/auth.routes.js';
 import cookieParser from 'cookie-parser';
+import userRouter from './routes/user.routes.js';
 
 const app = express();
 app.use(express.json());
@@ -18,6 +19,7 @@ app.get('/', (req, res)=>{
 });
 
 app.use('/api/auth', router);
+app.use('/api/users', userRouter);
 
 app.listen(PORT, async()=>{
     try{
