@@ -38,7 +38,7 @@ const userSchema = new Schema({
         type: String,
         default: ""
     },
-    coverImag: {
+    coverImg: {
         type: String,
         default: ""
     },
