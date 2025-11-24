@@ -4,13 +4,22 @@ import connectDB from './database/db.js';
 import router from './routes/auth.routes.js';
 import cookieParser from 'cookie-parser';
 import userRouter from './routes/user.routes.js';
+import {v2 as cloudinary} from "cloudinary";
+import cors from 'cors';
 
 const app = express();
 app.use(express.json());
-// app.use(express.urlencoded({extended: true}));  // to parse from data urlencoded.
+app.use(cors());
+app.use(express.urlencoded({extended: true}));  // to parse from data urlencoded.
 app.use(cookieParser());
 
 dotenv.config();
+cloudinary.config({
+    cloud_name: process.env.CLOUD_NAME,
+    api_key: process.env.CLOUD_API_KEY,
+    api_secret: process.env.CLOUD_API_SECRET,
+});
+
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
