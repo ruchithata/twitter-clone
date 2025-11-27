@@ -1,12 +1,13 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import connectDB from './database/db.js';
-import router from './routes/auth.routes.js';
+import router from './routes/auth.route.js';
 import cookieParser from 'cookie-parser';
-import userRouter from './routes/user.routes.js';
+import userRouter from './routes/user.route.js';
 import {v2 as cloudinary} from "cloudinary";
 import cors from 'cors';
-import postRouter from './routes/post.routes.js';
+import postRouter from './routes/post.route.js';
+import notificationRouter from './routes/notification.route.js';
 
 const app = express();
 app.use(express.json());
@@ -31,6 +32,7 @@ app.get('/', (req, res)=>{
 app.use('/api/auth', router);
 app.use('/api/users', userRouter);
 app.use('/api/posts', postRouter);
+app.use('/api/notifications', notificationRouter);
 
 app.listen(PORT, async()=>{
     try{
