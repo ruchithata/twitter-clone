@@ -11,7 +11,10 @@ import notificationRouter from './routes/notification.route.js';
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000',
+    credentials: true,
+}));
 app.use(express.urlencoded({extended: true}));  // to parse from data urlencoded.
 app.use(cookieParser());
 
