@@ -6,7 +6,7 @@ const router = Router();
 
 router.post('/signup', signup);
 router.post('/login', login);
-router.get('/getuser', protectRoute, getuser);
+router.get('/me', protectRoute, getuser);
 router.post('/logout', logout);
 
 
