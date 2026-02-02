@@ -10,7 +10,8 @@ import postRouter from './routes/post.route.js';
 import notificationRouter from './routes/notification.route.js';
 
 const app = express();
-app.use(express.json());
+app.use(express.json({limit:"5mb"}));  // to parse json data with limit of 5mb
+// limit shouldn't be too high to avoid DOS attacks
 app.use(cors({
     origin: 'http://localhost:3000',
     credentials: true,
