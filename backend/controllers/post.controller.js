@@ -75,7 +75,8 @@ const commentPost = async(req, res) => {
         post.comments.push(comment);
         await post.save();
 
-        res.status(200).json(post);
+        const updatedComments = post.comments;
+        res.status(200).json(updatedComments);
     }
     catch(err){
         console.log("Error while commenting on post", err);
