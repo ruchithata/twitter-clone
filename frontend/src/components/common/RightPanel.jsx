@@ -7,11 +7,12 @@ import { useState } from "react";
 
 const RightPanel = () => {
 	const [pendingId, setPendingId] = useState(null);
+	
 	const {data:suggestedUsers,isLoading} = useQuery({
 		queryKey: ["suggestedUsers"],
 		queryFn: async() => {
 			try{
-				const res = await fetch(`api/users/suggested`, {
+				const res = await fetch(`/api/users/suggested`, {
 					credentials: "include",
 				});
 				const data = await res.json();
@@ -22,7 +23,7 @@ const RightPanel = () => {
 			} catch(error){
 				throw new Error(error.message);
 			}
-		}
+		},
 	});
 
 	const {follow,isPending} = useFollow();
