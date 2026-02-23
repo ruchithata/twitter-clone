@@ -4,13 +4,16 @@ import { commentPost, createPost, deletePost, getAllPosts, getFollowingPosts, ge
 
 const postRouter = Router();
 
+postRouter.post('/create', protectRoute, createPost);
+postRouter.post('/comment/:id', protectRoute, commentPost);
+postRouter.post('/like/:id', protectRoute, likeUnlikePost);
+
+postRouter.get('/likes/:id', protectRoute, getLikedPosts);
 postRouter.get('/', protectRoute, getAllPosts);
 postRouter.get('/following', protectRoute, getFollowingPosts);
 postRouter.get('/user/:username', protectRoute, getUserPosts);
-postRouter.post('/create', protectRoute, createPost);
+
 postRouter.delete('/:id', protectRoute, deletePost);
-postRouter.post('/comment/:id', protectRoute, commentPost);
-postRouter.post('/like/:id', protectRoute, likeUnlikePost);
-postRouter.get('/likes/:id', protectRoute, getLikedPosts);
+
 
 export default postRouter;

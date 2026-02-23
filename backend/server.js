@@ -13,7 +13,7 @@ const app = express();
 app.use(express.json({limit:"5mb"}));  // to parse json data with limit of 5mb
 // limit shouldn't be too high to avoid DOS attacks
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: 'http://localhost:5173',
     credentials: true,
 }));
 app.use(express.urlencoded({extended: true}));  // to parse from data urlencoded.
