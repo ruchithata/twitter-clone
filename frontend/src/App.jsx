@@ -17,7 +17,9 @@ export default function App() {
     queryKey: ['authUser'],  //querykey to give a unique name to our query and refer to it later
     queryFn: async() => {
       try{
-        const res = await fetch("api/auth/me");
+        const res = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
         const data = await res.json();
         if(!res.ok){
           throw new Error(data.message || data.error || "Something went wrong");
@@ -25,8 +27,8 @@ export default function App() {
         console.log("authUser is here:", data);
         return data;
       }
-      catch(error) {
-        throw new Error(error);
+      catch {
+        return null;;
       }
     },
     retry: false,

@@ -50,7 +50,8 @@ const followOrUnfollow = async(req, res) => {
                 await newNotification.save();
             }
 
-            res.status(200).json({message: "User followed successfully"});
+            res.status(200).json({
+                message: isFollowing ? "Unfollowed successfully" : "Followed successfully"});
         }
     }
     catch(err){
