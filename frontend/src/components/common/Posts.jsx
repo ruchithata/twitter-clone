@@ -1,9 +1,8 @@
 import Post from "./Post";
 import PostSkeleton from "../skeletons/PostSkeleton";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 
-const Posts = ({feedType}) => {
+const Posts = ({feedType, username, userId}) => {
 
 	const getPostEndpoint = () => {
 		switch(feedType) {
@@ -11,6 +10,10 @@ const Posts = ({feedType}) => {
 				return "/api/posts/";
 			case "following":
 				return "/api/posts/following";
+			case "posts":
+				return `/api/posts/user/${username}`;
+			case "likes":
+				return `/api/posts/likes/${userId}`;
 			default:
 				return "/api/posts/"
 		}
@@ -18,8 +21,8 @@ const Posts = ({feedType}) => {
 
 	const POST_ENDPOINT = getPostEndpoint();
 
-	const {data:posts, isLoading, refetch, isRefetching} = useQuery({
-		queryKey: ["posts"],
+	const {data:posts=[], isLoading} = useQuery({
+		queryKey: ["posts", feedType, username, userId],
 		queryFn: async() => {
 			try{
 				const res = await fetch(POST_ENDPOINT, {
@@ -37,22 +40,22 @@ const Posts = ({feedType}) => {
 		},
 	});
 
-	useEffect(() => {
-		refetch();
+	// useEffect(() => {
+	// 	refetch();
 
-	}, [feedType, refetch]);
+	// }, [feedType, refetch]);
 
 	return (
 		<>
-			{(isLoading || isRefetching) && (
+			{(isLoading) && (
 				<div className='flex flex-col justify-center'>
 					<PostSkeleton />
 					<PostSkeleton />
 					<PostSkeleton />
 				</div>
 			)}
-			{!isLoading && !isRefetching && posts?.length === 0 && <p className='text-center my-4'>No posts in this tab. Switch 👻</p>}
-			{!isLoading && !isRefetching && posts && (
+			{!isLoading && posts?.length === 0 && <p className='text-center my-4'>No posts in this tab. Switch 👻</p>}
+			{!isLoading && posts && (
 				<div>
 					{posts.map((post) => (
 						<Post key={post._id} post={post} />

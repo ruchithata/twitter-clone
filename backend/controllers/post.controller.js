@@ -64,7 +64,7 @@ const commentPost = async(req, res) => {
         const postId = req.params.id;
         const userId = req.user._id.toString();
 
-        if(!text){
+        if(!text || !text.trim()){
             return res.status(404).json({message: "Text field is required"});
         }
         const post = await Post.findById(postId);
@@ -77,6 +77,14 @@ const commentPost = async(req, res) => {
 
         const updatedComments = post.comments;
         res.status(200).json(updatedComments);
+
+        // const updatedPost = await Post.findById(postId)
+        // .populate({ path: "user", select: "-password"})
+        // .populate({ path: "comments.user", select: "-password"});
+        // res.status(200).json(updatedPost.comments);
+        if(!text){
+            return res.status(404).json({message: "Text field is required"});
+        }
     }
     catch(err){
         console.log("Error while commenting on post", err);
@@ -115,7 +123,10 @@ const likeUnlikePost = async(req, res) => {
             }
 
             const updatedLikes = post.likes;
-            res.status(200).json(updatedLikes);
+            res.status(200).json({
+                likes: updatedLikes,
+                action: userLikedPost ? "unliked":"liked"
+            });
         }
     }
     catch(err){
@@ -152,7 +163,7 @@ const getAllPosts = async(req, res) => {
             path: "comments.user",
             select: "-password",
         });
-        if(!posts.length === 0){
+        if(posts.length === 0){
             return res.status(200).json([]);
         }
         res.status(200).json(posts);

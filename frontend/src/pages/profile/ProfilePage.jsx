@@ -26,7 +26,7 @@ const ProfilePage = () => {
 	const isMyProfile = true;
 
 	const {data:user,isLoading,refetch,isRefetching} = useQuery({
-		queryKey: ["userProfile"],
+		queryKey: ["userProfile", username],
 		queryFn: async() => {
 			try{
 				const res = await fetch(`/api/users/profile/${username}`);
@@ -205,7 +205,9 @@ const ProfilePage = () => {
 						</>
 					)}
 
-					<Posts />
+					{user && (
+						<Posts feedType={feedType} username={username} userId={user._id}/>
+					)}
 				</div>
 			</div>
 		</>

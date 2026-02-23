@@ -13,12 +13,13 @@ import { formatPostDate } from "../../utils/date";
 const Post = ({ post }) => {
 	const [comment, setComment] = useState("");
 	const queryClient = useQueryClient();
-	const authUser = queryClient.getQueryData(["authUser"]);
+	
+	const authUser = queryClient.getQueryData(["authUser"]) || {};
 	const postOwner = post.user;
 
-	const isLiked = post.likes.includes(authUser._id);
+	const isLiked = post.likes?.includes(authUser?._id);
 
-	const isMyPost = authUser?._id === post.user._id;
+	const isMyPost = authUser?._id === post.user?._id;
 	const formattedDate = formatPostDate(post.createdAt);
 
 	const {mutate:deletePost, isPending:isDeleting} = useMutation({
@@ -26,6 +27,7 @@ const Post = ({ post }) => {
 			try{
 				const res = await fetch(`/api/posts/${post._id}`, {
 					method: "DELETE",
+					credentials: "include",
 				});
 
 				const data = await res.json();
@@ -40,7 +42,11 @@ const Post = ({ post }) => {
 		},
 		onSuccess: () => {
 			toast.success("Post deleted successfully");
-			queryClient.invalidateQueries({queryKey: ["posts"]});
+			// queryClient.invalidateQueries({queryKey: ["posts"]});
+			queryClient.setQueriesData({ queryKey: ["posts"] }, (oldData) => {
+				if(!Array.isArray(oldData)) return oldData;
+				return oldData.filter((p) => p._id !== post._id);
+			});
 		}
 	})
 
@@ -49,6 +55,7 @@ const Post = ({ post }) => {
 			try{
 				const res = await fetch(`/api/posts/like/${post._id}`, {
 					method: "POST",
+					credentials: "include",
 				});
 				const data = await res.json();
 				if(!res.ok){
@@ -60,35 +67,78 @@ const Post = ({ post }) => {
 				throw new Error(error);
 			}
 		},
-		onSuccess: (updatedLikes)=> {
-			toast.success("Post liked successfully");
-			// this is not the best UX, bc it will refetch all posts
-			// queryClient.invalidateQueries({queryKey: ["posts"]});
+			// 🔥 OPTIMISTIC UPDATE
+		onMutate: async () => {
+			await queryClient.cancelQueries({ queryKey: ["posts"] });
 
-			// updating the cache directly for that post
-			queryClient.setQueryData(["posts"], (oldData) => {
-				return oldData.map(p => {
-					if(p._id === post._id){
-						return {...p, likes:updatedLikes}
-					}
-					return p;
-				})
+			const previousPosts = queryClient.getQueriesData({ queryKey: ["posts"] });
+
+			queryClient.setQueriesData({ queryKey: ["posts"] }, (oldData) => {
+				if (!Array.isArray(oldData)) return oldData;
+
+				return oldData.map((p) => {
+					if (p._id !== post._id) return p;
+
+					const alreadyLiked = p.likes.includes(authUser._id);
+
+					return {
+						...p,
+						likes: alreadyLiked
+							? p.likes.filter((id) => id !== authUser._id)
+							: [...p.likes, authUser._id],
+					};
+				});
+			});
+
+			return { previousPosts };
+		},
+
+		// 🔥 ROLLBACK IF ERROR
+		onError: (err, _, context) => {
+			context?.previousPosts?.forEach(([key, data]) => {
+				queryClient.setQueryData(key, data);
 			});
 		},
-		onError: (error)=> {
-			toast.error(error.message);
-		}
+
+		// 🔥 SYNC WITH SERVER AFTER
+		onSettled: () => {
+			queryClient.invalidateQueries({ queryKey: ["posts"] });
+		
+	// 	onSuccess: (updatedLikes)=> {
+	// 		toast.success("Post liked successfully");
+	// 		// this is not the best UX, bc it will refetch all posts
+	// 		// queryClient.invalidateQueries({queryKey: ["posts"] });
+
+	// 		// updating the cache directly for that post
+	// 		queryClient.setQueriesData({ queryKey: ["posts"] }, (oldData) => {
+	// 			if(!Array.isArray(oldData)) return oldData;
+
+	// 			return oldData.map((p) => {
+	// 				p._id === post._id ? {...p, likes:updatedLikes} : p;
+
+	// 		// 		// if(p._id === post._id){
+	// 		// 		// 	return {...p, likes:updatedLikes};
+	// 		// 		// }
+	// 		// 		// return p;
+	// 			});
+	// 		});
+	// 	},
+	// 	onError: (error)=> {
+	// 		toast.error(error.message);
+		},
 	});
 
 	const {mutate:commentPost, isPending:isCommenting} = useMutation({
 		mutationFn: async() => {
 			try{
+				console.log("COMMENT VALUE:", comment);
 				const res = await fetch(`/api/posts/comment/${post._id}`, {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
 					},
 					body: JSON.stringify({text: comment}),
+					credentials: "include",
 				});
 				const data = await res.json();
 				if(!res.ok){
@@ -102,7 +152,9 @@ const Post = ({ post }) => {
 		onSuccess: (updatedComments) => {
 			toast.success("Comment posted successfully");
 			setComment("");
-			queryClient.setQueryData(["posts"], (oldData) => {
+			queryClient.setQueriesData({ queryKey: ["posts"] }, (oldData) => {
+				if(!Array.isArray(oldData)) return oldData;
+
 				return oldData.map(p => {
 					if(p._id === post._id){
 						return {...p, comments:updatedComments}
@@ -110,11 +162,15 @@ const Post = ({ post }) => {
 					return p;
 				})
 			});
+
+			queryClient.invalidateQueries({queryKey: ["posts"]});
 		},
 		onError: (error) => {
 			toast.error(error.message);
 		}
 	});
+
+	if(!post) return null;
 
 	const handleDeletePost = () => {
 		deletePost();
@@ -122,6 +178,7 @@ const Post = ({ post }) => {
 
 	const handlePostComment = (e) => {
 		e.preventDefault();
+		if(!comment.trim()) return;
 		if (isCommenting) return;
 		commentPost();
 	};
@@ -177,7 +234,7 @@ const Post = ({ post }) => {
 							>
 								<FaRegComment className='w-4 h-4  text-slate-500 group-hover:text-sky-400' />
 								<span className='text-sm text-slate-500 group-hover:text-sky-400'>
-									{post.comments.length}
+									{post.comments?.length || 0}
 								</span>
 							</div>
 							{/* We're using Modal Component from DaisyUI */}
@@ -185,12 +242,12 @@ const Post = ({ post }) => {
 								<div className='modal-box rounded border border-gray-600'>
 									<h3 className='font-bold text-lg mb-4'>COMMENTS</h3>
 									<div className='flex flex-col gap-3 max-h-60 overflow-auto'>
-										{post.comments.length === 0 && (
+										{!post.comments?.length === 0 && (
 											<p className='text-sm text-slate-500'>
 												No comments yet 🤔 Be the first one 😉
 											</p>
-										)}
-										{post.comments.map((comment) => (
+									)}
+										{post.comments?.map((comment) => (
 											<div key={comment._id} className='flex gap-2 items-start'>
 												<div className='avatar'>
 													<div className='w-8 rounded-full'>
