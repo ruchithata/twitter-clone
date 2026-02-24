@@ -11,11 +11,12 @@ import { FaArrowLeft } from "react-icons/fa6";
 import { IoCalendarOutline } from "react-icons/io5";
 import { FaLink } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { formatMemberSinceDate } from "../../utils/date";
 import { useQueryClient } from "@tanstack/react-query";
 
 import useFollow from "../../hooks/useFollow";
+import toast from "react-hot-toast";
 
 const ProfilePage = () => {
 	const [coverImg, setCoverImg] = useState(null);
@@ -46,6 +47,43 @@ const ProfilePage = () => {
 			}catch(error){
 				throw new Error(error);
 			}
+		}
+	});
+
+	const {mutate:updateProfile, isPending:isUpadatingProfile} = useMutation({
+		mutationFn: async() => {
+			try{
+				const res = await fetch(`/api/users/update`, {
+					method: "PUT",
+					credentials: "include",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						coverImg,
+						profileImg,
+					}),
+				})
+				const data = await res.json();
+				if(!res.ok){
+					throw new Error(data.message || data.error || "Something went wrong");
+				}
+				return data;
+			}
+			catch(error){
+				throw new Error(error);
+			}
+		},
+		onSuccess: () => {
+			toast.success("Profile updated successfully");
+			Promise.all([
+
+				queryClient.invalidateQueries({queryKey: ["authUser"] }),
+				queryClient.invalidateQueries({queryKey: ["userProfile"] }),
+			])
+		},
+		onError: (error) => {
+			toast.error(error.message);
 		}
 	});
 
@@ -133,7 +171,7 @@ const ProfilePage = () => {
 								</div>
 							</div>
 							<div className='flex justify-end px-4 mt-5'>
-								{isMyProfile && <EditProfileModal />}
+								{isMyProfile && <EditProfileModal authUser={authUser}/>}
 								{!isMyProfile && (
 									<button
 										className='btn btn-outline rounded-full btn-sm'
@@ -147,9 +185,9 @@ const ProfilePage = () => {
 								{(coverImg || profileImg) && (
 									<button
 										className='btn btn-primary rounded-full btn-sm text-white px-4 ml-2'
-										onClick={() => alert("Profile updated successfully")}
+										onClick={() => updateProfile()}
 									>
-										Update
+										{isUpadatingProfile ? "Updating..." : "Update"}
 									</button>
 								)}
 							</div>
