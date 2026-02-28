@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { IoSettingsOutline } from "react-icons/io5";
 import { FaUser } from "react-icons/fa";
 import { FaHeart } from "react-icons/fa6";
+import { BiRepost } from "react-icons/bi";
 
 const NotificationPage = () => {
 	const queryClient  = useQueryClient();
@@ -59,7 +60,7 @@ const NotificationPage = () => {
 						</div>
 						<ul
 							tabIndex={0}
-							className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52'
+							className='dropdown-content z-1 menu p-2 shadow bg-base-100 rounded-box w-52'
 						>
 							<li>
 								<a onClick={deleteNotifications}>Delete all notifications</a>
@@ -78,6 +79,7 @@ const NotificationPage = () => {
 						<div className='flex gap-2 p-4'>
 							{notification.type === "follow" && <FaUser className='w-7 h-7 text-primary' />}
 							{notification.type === "like" && <FaHeart className='w-7 h-7 text-red-500' />}
+							{notification.type === "reshare" && <BiRepost className='w-7 h-7 text-green-500' />}
 							<Link to={`/profile/${notification.from.username}`}>
 								<div className='avatar'>
 									<div className='w-8 rounded-full'>
@@ -86,7 +88,13 @@ const NotificationPage = () => {
 								</div>
 								<div className='flex gap-1'>
 									<span className='font-bold'>@{notification.from.username}</span>{" "}
-									{notification.type === "follow" ? "followed you" : "liked your post"}
+									{notification.type === "follow"
+										? "followed you"
+										: notification.type === "like"
+										? "liked your post"
+										: notification.type === "reshare"
+										? "reshared your post"
+										: "performed an action"}
 								</div>
 							</Link>
 						</div>

@@ -4,8 +4,9 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "dev": "cd backend && node --watch server.js",
-    "start": "cd backend && node server.js"
+    "dev": "cross-env NODE_ENV=development node --watch backend/server.js",
+    "start": "cross-env NODE_ENV=production node backend/server.js",
+    "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend"
   },
   "repository": {
     "type": "git",
@@ -28,5 +29,8 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.2"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0"
   }
 }
