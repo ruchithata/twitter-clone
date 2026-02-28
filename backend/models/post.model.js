@@ -18,6 +18,24 @@ const postSchema = new Schema({
             ref: 'User'
         }
     ],
+    favorites: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            default: []
+        }
+    ],
+    reshares: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            default: []
+        }
+    ],
+    originalPost: {
+        type: Schema.Types.ObjectId,
+        ref: 'Post',
+    },
     comments: [
         {
             text: {
