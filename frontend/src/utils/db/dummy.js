@@ -20,6 +20,8 @@ export const POSTS = [
 			},
 		],
 		likes: ["6658s891", "6658s892", "6658s893", "6658s894"],
+			favorites: [],
+			reshares: [],
 	},
 	{
 		_id: "2",
@@ -41,6 +43,8 @@ export const POSTS = [
 			},
 		],
 		likes: ["6658s891", "6658s892", "6658s893", "6658s894"],
+			favorites: [],
+			reshares: [],
 	},
 	{
 		_id: "3",
@@ -53,6 +57,8 @@ export const POSTS = [
 		},
 		comments: [],
 		likes: ["6658s891", "6658s892", "6658s893", "6658s894", "6658s895", "6658s896"],
+			favorites: [],
+			reshares: [],
 	},
 	{
 		_id: "4",
@@ -85,6 +91,8 @@ export const POSTS = [
 			"6658s898",
 			"6658s899",
 		],
+			favorites: [],
+			reshares: [],
 	},
 ];
 

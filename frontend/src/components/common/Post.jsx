@@ -18,6 +18,8 @@ const Post = ({ post }) => {
 	const postOwner = post.user;
 
 	const isLiked = post.likes?.includes(authUser?._id);
+	const isFavorited = post.favorites?.includes(authUser?._id);
+	const isReshared = post.reshares?.includes(authUser?._id);
 
 	const isMyPost = authUser?._id === post.user?._id;
 	const formattedDate = formatPostDate(post.createdAt);
@@ -154,19 +156,102 @@ const Post = ({ post }) => {
 			setComment("");
 			queryClient.setQueriesData({ queryKey: ["posts"] }, (oldData) => {
 				if(!Array.isArray(oldData)) return oldData;
-
 				return oldData.map(p => {
 					if(p._id === post._id){
 						return {...p, comments:updatedComments}
 					}
 					return p;
-				})
+				});
 			});
-
 			queryClient.invalidateQueries({queryKey: ["posts"]});
 		},
 		onError: (error) => {
 			toast.error(error.message);
+		}
+	});
+
+	// favorite/unfavorite
+	const {mutate:toggleFavorite, isPending:isTogglingFav} = useMutation({
+		mutationFn: async() => {
+			try{
+				const res = await fetch(`/api/posts/favorite/${post._id}`, {
+					method: "POST",
+					credentials: "include",
+				});
+				const data = await res.json();
+				if(!res.ok) throw new Error(data.error || data.message);
+				return data;
+			} catch(err){
+				throw new Error(err);
+			}
+		},
+		onMutate: async () => {
+			await queryClient.cancelQueries({ queryKey: ["posts"] });
+			const previous = queryClient.getQueriesData({ queryKey: ["posts"] });
+			queryClient.setQueriesData({ queryKey: ["posts"] }, (old) => {
+				if(!Array.isArray(old)) return old;
+				return old.map((p) => {
+					if(p._id !== post._id) return p;
+					const alreadyFav = p.favorites?.includes(authUser._id);
+					return {
+						...p,
+						favorites: alreadyFav
+							? p.favorites.filter(id=>id!==authUser._id)
+							: [...(p.favorites||[]), authUser._id],
+					};
+				});
+			});
+			return { previous };
+		},
+		onError: (err, _, context) => {
+			context?.previous?.forEach(([key, data]) => {
+				queryClient.setQueryData(key, data);
+			});
+		},
+		onSettled: () => {
+			queryClient.invalidateQueries({ queryKey: ["posts"] });
+		}
+	});
+
+	const {mutate:toggleReshare, isPending:isResharing} = useMutation({
+		mutationFn: async() => {
+			try{
+				const res = await fetch(`/api/posts/reshare/${post._id}`, {
+					method: "POST",
+					credentials: "include",
+				});
+				const data = await res.json();
+				if(!res.ok) throw new Error(data.error || data.message);
+				return data;
+			} catch(err){
+				throw new Error(err);
+			}
+		},
+		onMutate: async () => {
+			await queryClient.cancelQueries({ queryKey: ["posts"] });
+			const previous = queryClient.getQueriesData({ queryKey: ["posts"] });
+			queryClient.setQueriesData({ queryKey: ["posts"] }, (old) => {
+				if(!Array.isArray(old)) return old;
+				return old.map((p) => {
+					if(p._id !== post._id) return p;
+					const already = p.reshares?.includes(authUser._id);
+					return {
+						...p,
+						reshares: already
+							? p.reshares.filter(id=>id!==authUser._id)
+							: [...(p.reshares||[]), authUser._id],
+					};
+				});
+			});
+			return { previous };
+		},
+		onError: (err, _, context) => {
+			context?.previous?.forEach(([key, data]) => {
+				queryClient.setQueryData(key, data);
+			});
+		},
+		onSettled: () => {
+			queryClient.invalidateQueries({ queryKey: ["posts"] });
 		}
 	});
 
@@ -186,6 +271,16 @@ const Post = ({ post }) => {
 	const handleLikePost = () => {
 		if(isLiking) return;
 		likePost();
+	};
+
+	const handleFavoritePost = () => {
+		if(isTogglingFav) return;
+		toggleFavorite();
+	};
+
+	const handleResharePost = () => {
+		if(isResharing) return;
+		toggleReshare();
 	};
 
 	return (
@@ -217,6 +312,11 @@ const Post = ({ post }) => {
 						)}
 					</div>
 					<div className='flex flex-col gap-3 overflow-hidden'>
+					{post.originalPost && (
+						<div className='text-sm text-gray-500 mb-1'>
+							Reshared from <Link to={`/profile/${post.originalPost.user.username}`} className='font-medium'>@{post.originalPost.user.username}</Link>
+						</div>
+					)}
 						<span>{post.text}</span>
 						{post.img && (
 							<img
@@ -288,9 +388,16 @@ const Post = ({ post }) => {
 									<button className='outline-none'>close</button>
 								</form>
 							</dialog>
-							<div className='flex gap-1 items-center group cursor-pointer'>
-								<BiRepost className='w-6 h-6  text-slate-500 group-hover:text-green-500' />
-								<span className='text-sm text-slate-500 group-hover:text-green-500'>0</span>
+							<div className='flex gap-1 items-center group cursor-pointer' onClick={handleResharePost}>
+								{isResharing && <LoadingSpinner size="sm" />}
+								<BiRepost
+									className={`w-6 h-6 ${isReshared ? "text-green-500" : "text-slate-500"} group-hover:text-green-500`}
+								/>
+								<span
+									className={`text-sm ${isReshared ? "text-green-500" : "text-slate-500"} group-hover:text-green-500`}
+								>
+									{post.reshares?.length || 0}
+								</span>
 							</div>
 							<div className='flex gap-1 items-center group cursor-pointer' onClick={handleLikePost}>
 								{isLiking && <LoadingSpinner size="sm" />}
@@ -309,8 +416,13 @@ const Post = ({ post }) => {
 							</div>
 						</div>
 						<div className='flex w-1/3 justify-end gap-2 items-center'>
-							<FaRegBookmark className='w-4 h-4 text-slate-500 cursor-pointer' />
-						</div>
+							<div className='cursor-pointer' onClick={handleFavoritePost}>
+								{isTogglingFav && <LoadingSpinner size="sm" />}
+								<FaRegBookmark
+									className={`w-4 h-4 ${isFavorited ? "text-yellow-400" : "text-slate-500"}`}
+								/>
+							</div>
+					</div>
 					</div>
 				</div>
 			</div>
