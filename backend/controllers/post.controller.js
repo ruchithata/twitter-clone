@@ -135,6 +135,120 @@ const likeUnlikePost = async(req, res) => {
     }
 }
 
+// toggle favorite (bookmark)
+const favoriteUnfavoritePost = async(req, res) => {
+    try{
+        const userId = req.user._id;
+        const {id:postId} = req.params;
+        const post = await Post.findById(postId);
+        if(!post) return res.status(404).json({message: "Post not found"});
+
+        const alreadyFav = post.favorites.includes(userId);
+        if(alreadyFav){
+            await Post.updateOne({_id: postId}, {$pull: {favorites: userId}});
+            await User.updateOne({_id: userId}, {$pull: {favoritePosts: postId}});
+            const updated = post.favorites.filter(id => id.toString() !== userId.toString());
+            res.status(200).json({favorites: updated, action: "unfavorited"});
+        } else {
+            post.favorites.push(userId);
+            await User.updateOne({_id: userId}, {$push: {favoritePosts: postId}});
+            await post.save();
+            res.status(200).json({favorites: post.favorites, action: "favorited"});
+        }
+    } catch(err){
+        console.log("Error while toggling favorite", err);
+        res.status(500).json({message: "Internal Server Error"});
+    }
+}
+
+// get favorites for a given user
+const getFavoritePosts = async(req, res) => {
+    const userId = req.params.id;
+    try{
+        const user = await User.findById(userId);
+        if(!user) return res.status(404).json({message: "User not found"});
+        const favorites = await Post.find({_id: {$in: user.favoritePosts}})
+            .populate({ path: "user", select: "-password"})
+            .populate({ path: "comments.user", select: "-password"})
+            .populate({ path: "originalPost", populate: { path: "user", select: "-password" }});
+        res.status(200).json(favorites);
+    } catch(err){
+        console.log("Error while getting favorite posts", err);
+        res.status(500).json({message: "Internal Server Error"});
+    }
+}
+
+// get reshares for a given user
+const getResharedPosts = async(req, res) => {
+    const userId = req.params.id;
+    try{
+        const user = await User.findById(userId);
+        if(!user) return res.status(404).json({message: "User not found"});
+        const reshares = await Post.find({_id: {$in: user.resharedPosts}})
+            .populate({ path: "user", select: "-password"})
+            .populate({ path: "comments.user", select: "-password"})
+            .populate({ path: "originalPost", populate: { path: "user", select: "-password" }});
+        res.status(200).json(reshares);
+    } catch(err){
+        console.log("Error while getting reshare posts", err);
+        res.status(500).json({message: "Internal Server Error"});
+    }
+}
+
+// reshare post (toggle)
+const resharePost = async(req, res) => {
+    try{
+        const userId = req.user._id;
+        const {id:postId} = req.params;
+        const original = await Post.findById(postId);
+        if(!original) return res.status(404).json({message: "Post not found"});
+
+        const already = original.reshares.includes(userId);
+        if(already){
+            await Post.updateOne({_id: postId}, {$pull: {reshares: userId}});
+            await User.updateOne({_id: userId}, {$pull: {resharedPosts: postId}});
+            // remove the created reshared post
+            await Post.deleteOne({originalPost: postId, user: userId});
+            // remove reshare notification(s)
+            try{
+                await Notification.deleteMany({ from: userId, to: original.user, type: "reshare" });
+            } catch(e) {
+                console.log("Error deleting reshare notifications", e);
+            }
+            const updated = original.reshares.filter(id => id.toString() !== userId.toString());
+            res.status(200).json({reshares: updated, action: "unreshared"});
+        } else {
+            original.reshares.push(userId);
+            await User.updateOne({_id: userId}, {$push: {resharedPosts: postId}});
+            await original.save();
+            const newPost = new Post({
+                user: userId,
+                text: original.text,
+                img: original.img,
+                originalPost: original._id
+            });
+            await newPost.save();
+            // notify original post owner
+            try{
+                if(original.user.toString() !== userId.toString()){
+                    const notification = new Notification({
+                        from: userId,
+                        to: original.user,
+                        type: "reshare"
+                    });
+                    await notification.save();
+                }
+            } catch(e){
+                console.log("Error creating reshare notification", e);
+            }
+            res.status(201).json({reshares: original.reshares, action: "reshared"});
+        }
+    } catch(err){
+        console.log("Error while resharing post", err);
+        res.status(500).json({message: "Internal Server Error"});
+    }
+}
+
 const getLikedPosts = async(req, res) => {
     const userId = req.params.id;
     try{
@@ -144,7 +258,8 @@ const getLikedPosts = async(req, res) => {
         }
         const likedPosts = await Post.find({_id: {$in: user.likedPosts}})
         .populate({ path: "user", select: "-password"})
-        .populate({ path: "comments.user", select: "-password"});
+        .populate({ path: "comments.user", select: "-password"})
+        .populate({ path: "originalPost", populate: { path: "user", select: "-password" } });
 
         res.status(200).json(likedPosts);
     }
@@ -162,6 +277,9 @@ const getAllPosts = async(req, res) => {
         }).populate({
             path: "comments.user",
             select: "-password",
+        }).populate({
+            path: "originalPost",
+            populate: { path: "user", select: "-password" }
         });
         if(posts.length === 0){
             return res.status(200).json([]);
@@ -185,7 +303,11 @@ const getFollowingPosts = async(req, res) => {
         const following = user.following;
         const feedPosts = await Post.find({user: {$in: following}})
         .sort({createdAt: -1}).populate({ path: "user", select: "-password"})
-        .populate({ path: "comments.user", select: "-password"});
+        .populate({ path: "comments.user", select: "-password"})
+        .populate({
+            path: "originalPost",
+            populate: { path: "user", select: "-password" }
+        });
 
         res.status(200).json(feedPosts);
     }
@@ -204,7 +326,11 @@ const getUserPosts = async(req, res) => {
         }
         const posts = await Post.find({user: user._id}).sort({createdAt: -1})
         .populate({path: "user", select: "-password"})
-        .populate({path: "comments.user", select: "-password"});
+        .populate({path: "comments.user", select: "-password"})
+        .populate({
+            path: "originalPost",
+            populate: { path: "user", select: "-password" }
+        });
 
         res.status(200).json(posts);
     }
@@ -214,4 +340,4 @@ const getUserPosts = async(req, res) => {
     }
 }
 
-export {createPost, deletePost, commentPost, likeUnlikePost, getAllPosts, getLikedPosts, getFollowingPosts, getUserPosts};
+export {createPost, deletePost, commentPost, likeUnlikePost, favoriteUnfavoritePost, resharePost, getAllPosts, getLikedPosts, getFavoritePosts, getResharedPosts, getFollowingPosts, getUserPosts};

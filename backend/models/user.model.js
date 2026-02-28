@@ -57,6 +57,20 @@ const userSchema = new Schema({
             default: []
         },
     ],
+    favoritePosts: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Post",
+            default: []
+        }
+    ],
+    resharedPosts: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Post",
+            default: []
+        }
+    ]
 }, {timestamps: true});
 
 
